@@ -1,0 +1,141 @@
+import random
+import sys
+import pygame
+
+# 1. تهيئة اللعبة
+pygame.init()
+
+# إعدادات الشاشة
+WIDTH, HEIGHT = 500, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("لعبة سباق السيارات")
+
+# الألوان
+GRAY = (50, 50, 50)
+WHITE = (255, 255, 255)
+RED = (200, 0, 0)
+BLUE = (0, 100, 255)
+YELLOW = (255, 215, 0)
+
+# إعدادات الوقت والسرعة
+clock = pygame.time.Clock()
+FPS = 60
+
+# إعدادات اللاعب (السيارة)
+player_width, player_height = 50, 90
+player_x = WIDTH // 2 - player_width // 2
+player_y = HEIGHT - 120
+player_speed = 7
+
+# إعدادات السيارة المنافسة (العائق)
+enemy_width, enemy_height = 50, 90
+enemy_x = random.randint(100, WIDTH - 100 - enemy_width)
+enemy_y = -100
+enemy_speed = 6
+
+# النقاط والخطوط
+score = 0
+line_y = 0
+
+
+def draw_road():
+    global line_y
+    # رسم الطريق والحواف
+    screen.fill(GRAY)
+    pygame.draw.rect(screen, YELLOW, (20, 0, 10, HEIGHT))
+    pygame.draw.rect(screen, YELLOW, (WIDTH - 30, 0, 10, HEIGHT))
+
+    # رسم خطوط المنتصف المتحركة
+    line_y = (line_y + enemy_speed) % 80
+    for y in range(-80, HEIGHT, 80):
+        pygame.draw.rect(screen, WHITE, (WIDTH // 2 - 5, y + line_y, 10, 40))
+
+
+# الحلقة الرئيسية للعبة
+running = True
+game_over = False
+
+while running:
+    clock.tick(FPS)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    if not game_over:
+        # 1. حركة اللاعب (مفاتيح الأسهم)
+        keys = pygame.key.get_pressed()
+        if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and player_x > 30:
+            player_x -= player_speed
+        if (
+            keys[pygame.K_RIGHT] or keys[pygame.K_d]
+        ) and player_x < WIDTH - 30 - player_width:
+            player_x += player_speed
+
+        # 2. حركة العدو
+        enemy_y += enemy_speed
+
+        # إعادة العدو للأعلى وزيادة النقاط والسرعة
+        if enemy_y > HEIGHT:
+            enemy_y = -100
+            enemy_x = random.randint(40, WIDTH - 40 - enemy_width)
+            score += 1
+            if score % 5 == 0:  # زيادة السرعة كل 5 نقاط
+                enemy_speed += 1
+
+        # 3. تحديد مستطيلات التصادم (Hitboxes)
+        player_rect = pygame.Rect(
+            player_x, player_y, player_width, player_height
+        )
+        enemy_rect = pygame.Rect(
+            enemy_x, enemy_y, enemy_width, enemy_height
+        )
+
+        # فحص التصادم
+        if player_rect.colliderect(enemy_rect):
+            game_over = True
+
+        # 4. رسم العناصر على الشاشة
+        draw_road()
+
+        # رسم سيارة اللاعب (زرقاء)
+        pygame.draw.rect(
+            screen, BLUE, (player_x, player_y, player_width, player_height), 0, 5
+        )
+        # رسم سيارة العدو (حمراء)
+        pygame.draw.rect(
+            screen, RED, (enemy_x, enemy_y, enemy_width, enemy_height), 0, 5
+        )
+
+        # عرض النتيجة
+        font = pygame.font.SysFont("arial", 26, bold=True)
+        score_text = font.render(f"Score: {score}", True, WHITE)
+        screen.blit(score_text, (40, 20))
+
+    else:
+        # شاشة الخسارة (Game Over)
+        font_large = pygame.font.SysFont("arial", 50, bold=True)
+        over_text = font_large.render("GAME OVER", True, RED)
+        screen.blit(over_text, (WIDTH // 2 - 130, HEIGHT // 2 - 50))
+
+        font_small = pygame.font.SysFont("arial", 22)
+        restart_text = font_small.render(
+            "Press R to Restart or Q to Quit", True, WHITE
+        )
+        screen.blit(restart_text, (WIDTH // 2 - 140, HEIGHT // 2 + 20))
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_r]:
+            # إعادة تشغيل اللعبة
+            game_over = False
+            score = 0
+            enemy_speed = 6
+            enemy_y = -100
+            player_x = WIDTH // 2 - player_width // 2
+        elif keys[pygame.K_q]:
+            running = False
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
